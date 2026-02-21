@@ -89,26 +89,34 @@ function initializeDatabase(database: Database.Database) {
 
 export function getDb() {
   if (!db) {
-    const dbPath = path.join(process.cwd(), 'data', 'timesheet.db');
+    // Use /tmp on Vercel (serverless environment), fallback to local data directory
+    const isVercel = process.env.VERCEL === '1';
+    const dbPath = isVercel
+      ? path.join('/tmp', 'timesheet.db')
+      : path.join(process.cwd(), 'data', 'timesheet.db');
     
-    // Create data directory if it doesn't exist
-    const dataDir = path.dirname(dbPath);
-    try {
-      if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir, { recursive: true });
+    // Create directory if needed (not needed for /tmp as it always exists)
+    if (!isVercel) {
+      const dataDir = path.dirname(dbPath);
+      try {
+        if (!fs.existsSync(dataDir)) {
+          fs.mkdirSync(dataDir, { recursive: true });
+        }
+      } catch (err) {
+        console.error('Error creating data directory:', err);
+        throw new Error(`Failed to create data directory at ${dataDir}`);
       }
-    } catch (err) {
-      console.error('Error creating data directory:', err);
-      throw new Error(`Failed to create data directory at ${dataDir}`);
     }
 
     try {
+      console.log(`Opening database at: ${dbPath}`);
       db = new Database(dbPath);
       db.pragma('foreign_keys = ON');
       db.pragma('journal_mode = WAL');
       
       // Initialize database on first connection
       initializeDatabase(db);
+      console.log('Database initialized successfully');
     } catch (err) {
       console.error('Error initializing database:', err);
       db = null;
