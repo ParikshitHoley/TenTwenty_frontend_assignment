@@ -112,7 +112,7 @@ export default function DashboardPage() {
       );
 
       if (currentWeekExists) {
-        addToast("Current week already exists", "warning");
+        addToast("Current week already exists", "info");
         return;
       }
 

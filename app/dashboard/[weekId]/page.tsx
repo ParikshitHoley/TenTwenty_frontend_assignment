@@ -446,11 +446,14 @@ export default function WeekDetailsPage({
                         >
                           <button
                             onClick={(e) => {
-                              const menu = e.currentTarget.nextSibling;
-                              menu.style.display =
-                                menu.style.display === "block"
-                                  ? "none"
-                                  : "block";
+                              const menu = e.currentTarget
+                                .nextSibling as HTMLElement;
+                              if (menu) {
+                                menu.style.display =
+                                  menu.style.display === "block"
+                                    ? "none"
+                                    : "block";
+                              }
                             }}
                             style={{
                               display: "flex",

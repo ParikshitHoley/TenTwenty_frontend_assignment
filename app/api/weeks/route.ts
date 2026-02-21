@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { Week } from '@/lib/types';
 
 export async function GET(request: NextRequest) {
   try {

@@ -56,8 +56,6 @@ export async function PUT(
       return NextResponse.json({ error: 'Entry not found' }, { status: 404 });
     }
 
-    const hoursDifference = hours - (originalEntry.hours || 0);
-
     // Check weekly hours limit
     const result = db
       .prepare('SELECT SUM(hours) as total FROM timesheet_entries WHERE week_id = ? AND id != ?')
