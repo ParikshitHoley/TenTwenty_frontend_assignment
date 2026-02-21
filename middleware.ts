@@ -5,8 +5,10 @@ export function middleware(request: NextRequest) {
 
   // Protect dashboard routes - redirect to login if no session cookie
   if (pathname.startsWith('/dashboard')) {
-    // Check if user has auth session cookie
-    const sessionCookie = request.cookies.get('next-auth.session-token')?.value;
+    // Check if user has auth session cookie - check both possible cookie names
+    const sessionCookie = 
+      request.cookies.get('next-auth.session-token')?.value ||
+      request.cookies.get('__Secure-next-auth.session-token')?.value;
     
     if (!sessionCookie) {
       return NextResponse.redirect(new URL('/login', request.url));

@@ -29,6 +29,8 @@ export default function LoginPage() {
       }
 
       if (result?.ok) {
+        // Add a small delay to ensure session cookie is set before redirecting
+        await new Promise((resolve) => setTimeout(resolve, 500));
         router.push("/dashboard");
         router.refresh();
       }
