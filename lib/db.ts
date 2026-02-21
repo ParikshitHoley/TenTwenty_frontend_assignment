@@ -93,16 +93,27 @@ export function getDb() {
     
     // Create data directory if it doesn't exist
     const dataDir = path.dirname(dbPath);
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
+    try {
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+    } catch (err) {
+      console.error('Error creating data directory:', err);
+      throw new Error(`Failed to create data directory at ${dataDir}`);
     }
 
-    db = new Database(dbPath);
-    db.pragma('foreign_keys = ON');
-    db.pragma('journal_mode = WAL');
-    
-    // Initialize database on first connection
-    initializeDatabase(db);
+    try {
+      db = new Database(dbPath);
+      db.pragma('foreign_keys = ON');
+      db.pragma('journal_mode = WAL');
+      
+      // Initialize database on first connection
+      initializeDatabase(db);
+    } catch (err) {
+      console.error('Error initializing database:', err);
+      db = null;
+      throw err;
+    }
   }
   return db;
 }
