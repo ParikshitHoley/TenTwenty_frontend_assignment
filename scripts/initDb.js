@@ -65,29 +65,40 @@ if (!userExists) {
   console.log("✓ Demo user created: admin@gmail.com / admin");
 }
 
-// Seed weeks data for demo if not exists
-const weeksCount = db
-  .prepare("SELECT COUNT(*) as count FROM weeks")
-  .get().count;
-if (weeksCount === 0) {
-  const currentDate = new Date();
-  currentDate.setDate(currentDate.getDate() - currentDate.getDay() + 1); // Start from Monday
+// Seed weeks data for demo
+// Clear existing weeks and timesheet entries
+db.prepare("DELETE FROM timesheet_entries").run();
+db.prepare("DELETE FROM weeks").run();
 
-  for (let i = 0; i < 4; i++) {
-    const startDate = new Date(currentDate);
-    startDate.setDate(startDate.getDate() + i * 7);
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + 6);
+const currentDate = new Date();
+// Get Monday of current week
+const currentDay = currentDate.getDay();
+const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
+const currentMonday = new Date(currentDate);
+currentMonday.setDate(currentDate.getDate() - daysFromMonday);
 
-    const startStr = startDate.toISOString().split("T")[0];
-    const endStr = endDate.toISOString().split("T")[0];
+// Add last 5 weeks (going backwards from current week)
+for (let i = 4; i >= 0; i--) {
+  const startDate = new Date(currentMonday);
+  startDate.setDate(currentMonday.getDate() - i * 7);
 
-    db.prepare(
-      "INSERT INTO weeks (week_number, start_date, end_date, status, total_hours, user_id) VALUES (?, ?, ?, ?, ?, ?)",
-    ).run(i + 1, startStr, endStr, "Missing", 0, 1);
-  }
-  console.log("✓ Week data seeded");
+  const endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() + 4); // Monday to Friday
+
+  const startStr = startDate.toISOString().split("T")[0];
+  const endStr = endDate.toISOString().split("T")[0];
+
+  // Calculate week number
+  const weekNumber = Math.ceil(
+    (startDate.getTime() - new Date(startDate.getFullYear(), 0, 1).getTime()) /
+      (7 * 24 * 60 * 60 * 1000),
+  );
+
+  db.prepare(
+    "INSERT INTO weeks (week_number, start_date, end_date, status, total_hours, user_id) VALUES (?, ?, ?, ?, ?, ?)",
+  ).run(weekNumber, startStr, endStr, "Missing", 0, 1);
 }
+console.log("✓ Last 5 weeks seeded");
 
 console.log("✓ Database initialized at:", dbPath);
 db.close();

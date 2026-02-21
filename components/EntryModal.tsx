@@ -10,6 +10,7 @@ interface EntryModalProps {
   isEdit?: boolean;
   initialData?: any;
   maxHours?: number;
+  dailyHours?: number;
 }
 
 const WORK_TYPES = [
@@ -30,9 +31,13 @@ export default function EntryModal({
   isEdit = false,
   initialData,
   maxHours = 40,
+  dailyHours = 0,
 }: EntryModalProps) {
   const [hours, setHours] = useState(initialData?.hours || 1);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Max 12 hours per day, remaining hours available for the week
+  const maxDailyHours = Math.min(12 - dailyHours, maxHours);
 
   const handleSubmit = async (formData: FormData) => {
     setIsLoading(true);
@@ -52,7 +57,7 @@ export default function EntryModal({
   };
 
   const handleHoursChange = (value: number) => {
-    const newValue = Math.max(1, Math.min(maxHours, value));
+    const newValue = Math.max(1, Math.min(maxDailyHours, value));
     setHours(newValue);
   };
 
@@ -208,6 +213,15 @@ export default function EntryModal({
             }}
           >
             Hours <span style={{ color: "#ef4444" }}>*</span>
+            <span
+              style={{
+                color: "#6b7280",
+                fontSize: "0.75rem",
+                marginLeft: "0.25rem",
+              }}
+            >
+              (Max: {maxDailyHours} hours per day)
+            </span>
           </label>
           <div
             style={{

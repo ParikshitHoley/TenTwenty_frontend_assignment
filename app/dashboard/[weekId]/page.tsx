@@ -19,6 +19,10 @@ export default function WeekDetailsPage({
   const [modalOpen, setModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<TimesheetEntry | null>(null);
   const [selectedDate, setSelectedDate] = useState("");
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState<{
+    isOpen: boolean;
+    entryId: number | null;
+  }>({ isOpen: false, entryId: null });
   const router = useRouter();
   const { toasts, addToast, removeToast } = useToast();
 
@@ -70,7 +74,12 @@ export default function WeekDetailsPage({
   };
 
   const handleDeleteEntry = async (entryId: number) => {
-    if (!confirm("Are you sure you want to delete this entry?")) return;
+    setDeleteConfirmModal({ isOpen: true, entryId });
+  };
+
+  const handleConfirmDelete = async () => {
+    const entryId = deleteConfirmModal.entryId;
+    if (!entryId) return;
 
     try {
       const response = await fetch(`/api/timesheet/${entryId}`, {
@@ -83,11 +92,16 @@ export default function WeekDetailsPage({
       setEntries(updatedEntries);
       groupEntriesByDate(updatedEntries);
       addToast("Entry deleted successfully", "success");
+      setDeleteConfirmModal({ isOpen: false, entryId: null });
       fetchWeekData(); // Refresh week data
     } catch (error) {
       addToast("Failed to delete entry", "error");
       console.error(error);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteConfirmModal({ isOpen: false, entryId: null });
   };
 
   const handleSubmitEntry = async (data: any) => {
@@ -555,7 +569,121 @@ export default function WeekDetailsPage({
             : { date: selectedDate, week_id: id }
         }
         maxHours={editingEntry ? 40 : maxHours}
+        dailyHours={
+          dailyEntries[selectedDate]?.reduce(
+            (sum: number, entry: TimesheetEntry) =>
+              sum + (entry.id === editingEntry?.id ? 0 : entry.hours),
+            0,
+          ) || 0
+        }
       />
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmModal.isOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 50,
+          }}
+          onClick={handleCancelDelete}
+        >
+          <div
+            style={{
+              backgroundColor: "#ffffff",
+              borderRadius: "0.5rem",
+              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+              maxWidth: "28rem",
+              width: "90%",
+              padding: "1.5rem",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3
+              style={{
+                fontSize: "1.125rem",
+                fontWeight: "700",
+                color: "#111827",
+                marginBottom: "0.5rem",
+              }}
+            >
+              Delete Entry
+            </h3>
+            <p
+              style={{
+                color: "#6b7280",
+                fontSize: "0.875rem",
+                marginBottom: "1.5rem",
+              }}
+            >
+              Are you sure you want to delete this entry? This action cannot be
+              undone.
+            </p>
+            <div
+              style={{
+                display: "flex",
+                gap: "0.75rem",
+                justifyContent: "flex-end",
+              }}
+            >
+              <button
+                onClick={handleCancelDelete}
+                style={{
+                  borderRadius: "0.375rem",
+                  backgroundColor: "#e5e7eb",
+                  color: "#374151",
+                  paddingLeft: "1rem",
+                  paddingRight: "1rem",
+                  paddingTop: "0.5rem",
+                  paddingBottom: "0.5rem",
+                  fontSize: "0.875rem",
+                  fontWeight: "500",
+                  cursor: "pointer",
+                  border: "none",
+                  transition: "all",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.backgroundColor = "#d1d5db")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.backgroundColor = "#e5e7eb")
+                }
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                style={{
+                  borderRadius: "0.375rem",
+                  backgroundColor: "#ef4444",
+                  color: "#ffffff",
+                  paddingLeft: "1rem",
+                  paddingRight: "1rem",
+                  paddingTop: "0.5rem",
+                  paddingBottom: "0.5rem",
+                  fontSize: "0.875rem",
+                  fontWeight: "500",
+                  cursor: "pointer",
+                  border: "none",
+                  transition: "all",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.backgroundColor = "#dc2626")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.backgroundColor = "#ef4444")
+                }
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>

@@ -88,16 +88,107 @@ export default function DashboardPage() {
     }
   };
 
+  const handleCreateNewWeek = async () => {
+    try {
+      // Get current week's Monday and Friday
+      const today = new Date();
+      const currentDay = today.getDay();
+
+      // Calculate Monday of current week (0 = Sunday, so Monday = 1)
+      const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - daysFromMonday);
+
+      // Friday is 4 days after Monday
+      const friday = new Date(monday);
+      friday.setDate(monday.getDate() + 4);
+
+      const mondayStr = monday.toISOString().split("T")[0];
+      const fridayStr = friday.toISOString().split("T")[0];
+
+      // Check if current week already exists
+      const currentWeekExists = weeks.some(
+        (w) => w.start_date === mondayStr && w.end_date === fridayStr,
+      );
+
+      if (currentWeekExists) {
+        addToast("Current week already exists", "warning");
+        return;
+      }
+
+      // Calculate week number
+      const weekNumber = Math.ceil(
+        (monday.getTime() - new Date(monday.getFullYear(), 0, 1).getTime()) /
+          (7 * 24 * 60 * 60 * 1000),
+      );
+
+      // Create new week via API
+      const response = await fetch("/api/weeks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          week_number: weekNumber,
+          start_date: mondayStr,
+          end_date: fridayStr,
+          status: "Missing",
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to create week");
+
+      const newWeek = await response.json();
+
+      // Add the new week to the table
+      setWeeks([newWeek, ...weeks]);
+      addToast("Week created successfully", "success");
+    } catch (error) {
+      addToast("Failed to create week", "error");
+      console.error(error);
+    }
+  };
+
+  // Check if current week already exists (to disable button if needed)
+  const isCurrentWeekExists = () => {
+    const today = new Date();
+    const currentDay = today.getDay();
+    const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - daysFromMonday);
+    const friday = new Date(monday);
+    friday.setDate(monday.getDate() + 4);
+
+    const mondayStr = monday.toISOString().split("T")[0];
+    const fridayStr = friday.toISOString().split("T")[0];
+
+    return weeks.some(
+      (w) => w.start_date === mondayStr && w.end_date === fridayStr,
+    );
+  };
+
   const columns = [
     columnHelper.accessor("week_number", {
       header: "Week",
-      cell: (info) => `Week ${info.getValue()}`,
+      cell: (info) => ` ${info.getValue()}`,
       size: 100,
     }),
-    columnHelper.accessor((row) => `${row.start_date} - ${row.end_date}`, {
-      id: "dateRange",
-      header: "Date Range",
-    }),
+    columnHelper.accessor(
+      (row) => {
+        const formatDate = (dateStr: string) => {
+          const date = new Date(dateStr + "T00:00:00");
+          const day = date.getDate();
+          const month = date.toLocaleString("default", { month: "short" });
+          const year = date.getFullYear();
+          return `${day} ${month} ${year}`;
+        };
+        return `${formatDate(row.start_date)} - ${formatDate(row.end_date)}`;
+      },
+      {
+        id: "dateRange",
+        header: "Date Range",
+      },
+    ),
     columnHelper.accessor("status", {
       header: "Status",
       cell: (info) => {
@@ -212,29 +303,47 @@ export default function DashboardPage() {
             >
               Your Timesheet
             </h1>
-            <button
-              onClick={() => signOut({ callbackUrl: "/login" })}
+            <div
               style={{
-                borderRadius: "0.375rem",
-                backgroundColor: "#ef4444",
-                color: "#fff",
-                paddingLeft: "1rem",
-                paddingRight: "1rem",
-                paddingTop: "0.5rem",
-                paddingBottom: "0.5rem",
-                transition: "all",
-                cursor: "pointer",
-                border: "none",
+                display: "flex",
+                alignItems: "center",
+                gap: "1rem",
               }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.backgroundColor = "#dc2626")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.backgroundColor = "#ef4444")
-              }
             >
-              Logout
-            </button>
+              <span
+                style={{
+                  fontSize: "0.875rem",
+                  fontWeight: "500",
+                  color: "#374151",
+                }}
+              >
+                Admin
+              </span>
+              <button
+                onClick={() => signOut({ callbackUrl: "/login" })}
+                style={{
+                  borderRadius: "0.375rem",
+                  backgroundColor: "#ef4444",
+                  color: "#fff",
+                  paddingLeft: "1rem",
+                  paddingRight: "1rem",
+                  paddingTop: "0.5rem",
+                  paddingBottom: "0.5rem",
+                  transition: "all",
+                  cursor: "pointer",
+                  border: "none",
+                  fontSize: "0.875rem",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.backgroundColor = "#dc2626")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.backgroundColor = "#ef4444")
+                }
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -421,6 +530,65 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Table Header with New Button */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "1.5rem",
+          }}
+        >
+          <h2
+            style={{
+              fontSize: "1.125rem",
+              fontWeight: "600",
+              color: "#111827",
+            }}
+          >
+            Weeks
+          </h2>
+          <button
+            onClick={handleCreateNewWeek}
+            disabled={isCurrentWeekExists()}
+            style={{
+              borderRadius: "0.375rem",
+              backgroundColor: isCurrentWeekExists() ? "#d1d5db" : "#10b981",
+              color: "#fff",
+              paddingLeft: "1rem",
+              paddingRight: "1rem",
+              paddingTop: "0.5rem",
+              paddingBottom: "0.5rem",
+              fontWeight: "500",
+              transition: "all",
+              cursor: isCurrentWeekExists() ? "not-allowed" : "pointer",
+              border: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              opacity: isCurrentWeekExists() ? 0.6 : 1,
+            }}
+            onMouseEnter={(e) => {
+              if (!isCurrentWeekExists()) {
+                e.currentTarget.style.backgroundColor = "#059669";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isCurrentWeekExists()) {
+                e.currentTarget.style.backgroundColor = "#10b981";
+              }
+            }}
+            title={
+              isCurrentWeekExists()
+                ? "Current week already exists"
+                : "Create current week"
+            }
+          >
+            <span style={{ fontSize: "1.25rem", lineHeight: "1" }}>+</span>
+            New
+          </button>
+        </div>
+
         {/* Table */}
         <div
           style={{
@@ -560,12 +728,81 @@ export default function DashboardPage() {
                   paddingRight: "1.5rem",
                   paddingTop: "1rem",
                   paddingBottom: "1rem",
+                  flexWrap: "wrap",
+                  gap: "1rem",
                 }}
               >
-                <div style={{ fontSize: "0.875rem", color: "#4b5563" }}>
-                  Page {table.getState().pagination.pageIndex + 1} of{" "}
-                  {table.getPageCount()}
+                {/* Left: Per Page */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                  }}
+                >
+                  <label style={{ fontSize: "0.875rem", color: "#374151" }}>
+                    Per page:
+                  </label>
+                  <select
+                    value={table.getState().pagination.pageSize}
+                    onChange={(e) => {
+                      table.setPageSize(Number(e.target.value));
+                      table.setPageIndex(0);
+                    }}
+                    style={{
+                      borderRadius: "0.375rem",
+                      border: "1px solid #d1d5db",
+                      paddingLeft: "0.5rem",
+                      paddingRight: "0.5rem",
+                      paddingTop: "0.25rem",
+                      paddingBottom: "0.25rem",
+                      fontSize: "0.875rem",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {[5, 10, 25, 50, 100].map((pageSize) => (
+                      <option key={pageSize} value={pageSize}>
+                        {pageSize}
+                      </option>
+                    ))}
+                  </select>
                 </div>
+
+                {/* Center: Page Data */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "1rem",
+                    fontSize: "0.875rem",
+                    color: "#4b5563",
+                    flex: 1,
+                    justifyContent: "center",
+                  }}
+                >
+                  <div>
+                    Showing{" "}
+                    {table.getRowModel().rows.length === 0
+                      ? 0
+                      : table.getState().pagination.pageIndex *
+                          table.getState().pagination.pageSize +
+                        1}{" "}
+                    to{" "}
+                    {Math.min(
+                      (table.getState().pagination.pageIndex + 1) *
+                        table.getState().pagination.pageSize,
+                      weeks.length,
+                    )}{" "}
+                    of {weeks.length} entries
+                  </div>
+                  <span style={{ color: "#d1d5db" }}>|</span>
+                  <div>
+                    Page {table.getState().pagination.pageIndex + 1} of{" "}
+                    {table.getPageCount()}
+                  </div>
+                </div>
+
+                {/* Right: Navigation */}
                 <div style={{ display: "flex", gap: "0.5rem" }}>
                   <button
                     onClick={() => table.previousPage()}
